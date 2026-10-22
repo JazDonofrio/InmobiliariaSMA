@@ -1,0 +1,17 @@
+# Secretos y configuración local
+.env
+.env.*
+*.pem
+*.key
+secrets.*
+
+# Dependencias y compilados
+node_modules/
+dist/
+build/
+
+# Sistema y editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
