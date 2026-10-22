@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Oc8vRtNGKjYiDVLZnolQ8Iaf8KlApe+EYmzWwYmxVP8=' 'sha256-VFK+2dHSY/u9mhZaQdgz4tLcz1H9DbpQ5jdVxtUaITo='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; media-src 'self' blob: data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Oc8vRtNGKjYiDVLZnolQ8Iaf8KlApe+EYmzWwYmxVP8=' 'sha256-4tJ9LDsMlQwH86ev4Jk8lLVLlqxcnjDpRWXXqckbvmI='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; media-src 'self' blob: data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <script>if (window.top !== window.self) { try { window.top.location.href = window.self.location.href; } catch (e) { document.documentElement.style.display = 'none'; } }</script>
@@ -755,9 +755,9 @@ td select{border:1px solid var(--line);border-radius:6px;padding:5px 8px;backgro
   </div>
   <div class="chat-log" id="chatLog" aria-live="polite"></div>
   <div class="suggest" id="chatSuggest">
-    <button type="button">¿Qué departamentos de 2 dormitorios hay en alquiler?</button>
-    <button type="button">Busco casa con pileta hasta 200 mil dólares</button>
-    <button type="button">¿Qué necesito para alquilar?</button>
+    <button type="button">¿Qué casas hay en Junín de los Andes?</button>
+    <button type="button">Busco algo hasta 150 mil dólares</button>
+    <button type="button">¿Qué terrenos tienen disponibles?</button>
   </div>
   <p class="note" style="margin:0;padding:0 14px 8px;font-size:.74rem">Asistente automático. No escribas datos personales en el chat.</p>
   <form class="chat-form" id="chatForm">
@@ -1181,7 +1181,12 @@ function localAnswer(q){
   if (/compr|venta|vend/.test(t)) list = list.filter(p=>p.operacion==="venta");
   const tipoMap = {departamento:"Departamento",depto:"Departamento",casa:"Casa",ph:"PH",duplex:"Dúplex",terreno:"Terreno",lote:"Terreno",local:"Local",oficina:"Oficina"};
   for (const [k,v] of Object.entries(tipoMap)) if (new RegExp("\\b"+k).test(t)) { list = list.filter(p=>p.tipo===v); break; }
-  const zonas = [...new Set(props.map(p=>p.zona))].filter(z => t.includes(z.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")));
+  const zonas = [...new Set(props.map(p=>p.zona))].filter(z => {
+    const zn = norm(z);
+    if (t.includes(zn)) return true;
+    const clave = zn.split(/\s+/).filter(w => w.length >= 5 && !["villa","lago","andes","martin","santa"].includes(w));
+    return clave.length > 0 && clave.some(w => t.includes(w));
+  });
   if (zonas.length) list = list.filter(p=>zonas.includes(p.zona));
   const dm = t.match(/(\d)\s*(dorm|habit|cuarto)/); if (dm) list = list.filter(p=>(p.dormitorios||0) >= +dm[1]);
   if (/pileta|piscina/.test(t)) list = list.filter(p=>(p.amenities||[]).some(a=>/pileta/i.test(a)));
@@ -1189,7 +1194,7 @@ function localAnswer(q){
   if (/mascota|perro|gato/.test(t)) list = list.filter(p=>p.mascotas);
   const hm = t.match(/hasta\s*\$?\s*([\d.]+)\s*(mil|k)?/); if (hm){ let n = +hm[1].replace(/\./g,""); if (hm[2]) n *= 1000; list = list.filter(p=>p.precio<=n); }
   if (!list.length) return "No encontré propiedades publicadas con esas características. Podés dejar tu consulta desde una propiedad o escribirnos al " + settings.telefono + ".";
-  return `Encontré ${list.length} opción${list.length>1?"es":""}:\n` + list.slice(0,4).map(p=>`${p.code}: ${p.titulo} (${money(p)})`).join("\n");
+  return `Encontré ${list.length} ${list.length>1?"opciones":"opción"}:\n` + list.slice(0,4).map(p=>`${p.code}: ${p.titulo} (${money(p)})`).join("\n");
 }
 
 async function ask(q){
@@ -1243,13 +1248,13 @@ document.addEventListener("click", (e) => {
   const pv = e.target.closest("[data-privacy]"); if (pv){ openPrivacy(); return; }
   const cg = e.target.closest("[data-cg]"); if (cg){ const box = cg.closest(".card-img"); const pr = props.find(x => x.id === box.dataset.open); if (pr) setCardImg(box, pr, (+box.dataset.i || 0) + (+cg.dataset.cg)); return; }
   const cb = e.target.closest("[data-cbtab]"); if (cb){ $$("[data-cbtab]").forEach(b=>b.classList.toggle("on", b===cb)); $("#leadForm").hidden = cb.dataset.cbtab !== "consulta"; $("#visitForm").hidden = cb.dataset.cbtab !== "visita"; return; }
-  const dv = e.target.closest("[data-delvisit]"); if (dv){ ask("¿Borrar esta visita?", {yes:"Borrar"}).then(ok => { if (ok){ visits = visits.filter(v=>v.id!==dv.dataset.delvisit); saveVisits(); renderAdmin(); } }); return; }
+  const dv = e.target.closest("[data-delvisit]"); if (dv){ confirmar("¿Borrar esta visita?", {yes:"Borrar"}).then(ok => { if (ok){ visits = visits.filter(v=>v.id!==dv.dataset.delvisit); saveVisits(); renderAdmin(); } }); return; }
   const mt = e.target.closest("[data-motivo]"); if (mt) $("#cMotivo").value = mt.dataset.motivo;
   const ck = e.target.closest("[data-checkin]"); if (ck){ doCheckin(ck.dataset.checkin); return; }
   const ssd = e.target.closest("[data-survey-send]"); if (ssd){ sendSurvey(ssd.dataset.surveySend); return; }
   const sld = e.target.closest("[data-survey-load]"); if (sld){ openSurvey(sld.dataset.surveyLoad); return; }
   const ofr = e.target.closest("[data-offer]"); if (ofr){ openOffer(ofr.dataset.offer); return; }
-  const dof = e.target.closest("[data-deloffer]"); if (dof){ ask("¿Borrar esta oferta?", {yes:"Borrar"}).then(ok => { if (ok){ offers = offers.filter(o => o.id !== dof.dataset.deloffer); saveOffers(); renderAdmin(); } }); return; }
+  const dof = e.target.closest("[data-deloffer]"); if (dof){ confirmar("¿Borrar esta oferta?", {yes:"Borrar"}).then(ok => { if (ok){ offers = offers.filter(o => o.id !== dof.dataset.deloffer); saveOffers(); renderAdmin(); } }); return; }
   const rpt = e.target.closest("[data-report]"); if (rpt){ reportPropId = rpt.dataset.report; renderOwners(); window.scrollTo(0, 0); return; }
   if (e.target.closest("[data-reportback]")){ reportPropId = null; renderOwners(); return; }
   if (e.target.closest("[data-reportwa]")){ shareReport(true); return; }
@@ -1261,8 +1266,8 @@ document.addEventListener("click", (e) => {
   const o = e.target.closest("[data-open]"); if (o){ openDetail(o.dataset.open); return; }
   const c = e.target.closest("[data-close]"); if (c){ c.closest("dialog").close(); return; }
   const ed = e.target.closest("[data-edit]"); if (ed){ openPropForm(ed.dataset.edit); return; }
-  const del = e.target.closest("[data-del]"); if (del){ const p = props.find(x=>x.id===del.dataset.del); if (p) ask(`¿Eliminar ${p.code}, ${p.titulo}? Esta acción no se puede deshacer.`, {yes:"Eliminar"}).then(ok => { if (ok){ props = props.filter(x=>x!==p); saveProps(); renderAll(); toast("Propiedad eliminada"); } }); return; }
-  const dl = e.target.closest("[data-dellead]"); if (dl){ ask("¿Borrar esta consulta?", {yes:"Borrar"}).then(ok => { if (ok){ leads = leads.filter(l=>l.id!==dl.dataset.dellead); saveLeads(); renderAdmin(); } }); return; }
+  const del = e.target.closest("[data-del]"); if (del){ const p = props.find(x=>x.id===del.dataset.del); if (p) confirmar(`¿Eliminar ${p.code}, ${p.titulo}? Esta acción no se puede deshacer.`, {yes:"Eliminar"}).then(ok => { if (ok){ props = props.filter(x=>x!==p); saveProps(); renderAll(); toast("Propiedad eliminada"); } }); return; }
+  const dl = e.target.closest("[data-dellead]"); if (dl){ confirmar("¿Borrar esta consulta?", {yes:"Borrar"}).then(ok => { if (ok){ leads = leads.filter(l=>l.id!==dl.dataset.dellead); saveLeads(); renderAdmin(); } }); return; }
   const rv = e.target.closest("[data-rmvid]"); if (rv){ formVideos.splice(+rv.dataset.rmvid,1); renderPhotos(); return; }
   const rl = e.target.closest("[data-rmlink]"); if (rl){ formLinks.splice(+rl.dataset.rmlink,1); renderPhotos(); return; }
   const rm = e.target.closest("[data-rm]"); if (rm){ formPhotos.splice(+rm.dataset.rm,1); renderPhotos(); return; }
@@ -1372,7 +1377,7 @@ $("#settingsForm").onsubmit = async (e) => {
   await saveSettings(); renderFooter(); toast("Datos guardados");
 };
 $("#resetDemo").onclick = async () => {
-  if (!await ask("Se borran las propiedades, consultas y datos cargados en este navegador y vuelven los de demostración. ¿Continuar?", {yes:"Restablecer"})) return;
+  if (!await confirmar("Se borran las propiedades, consultas y datos cargados en este navegador y vuelven los de demostración. ¿Continuar?", {yes:"Restablecer"})) return;
   props = seedProps(); leads = seedLeads(); visits = seedVisits(); offers = seedOffers(); stats = seedStats(); settings = {...DEFAULT_SETTINGS};
   await Promise.all([saveProps(), saveLeads(), saveVisits(), saveOffers(), saveStats(), saveSettings()]); fillSettingsForm(); renderAll(); toast("Datos de demostración restablecidos");
 };
@@ -1635,9 +1640,9 @@ function doCheckin(id){
     if (pos){ ci.lat = pos.coords.latitude; ci.lng = pos.coords.longitude; ci.acc = Math.round(pos.coords.accuracy); ci.dist = (p && p.lat != null && p.lng != null) ? haversine(ci.lat, ci.lng, p.lat, p.lng) : null; }
     v.checkin = ci; saveVisits(); renderAdmin(); toast(pos ? "Check-in registrado" : "Check-in registrado sin ubicación");
   };
-  if (!navigator.geolocation){ ask("Este dispositivo no permite obtener la ubicación. ¿Registrar el check-in sin ubicación?", {yes:"Registrar"}).then(ok => { if (ok) save(null); }); return; }
+  if (!navigator.geolocation){ confirmar("Este dispositivo no permite obtener la ubicación. ¿Registrar el check-in sin ubicación?", {yes:"Registrar"}).then(ok => { if (ok) save(null); }); return; }
   toast("Obteniendo ubicación…");
-  navigator.geolocation.getCurrentPosition(save, () => { ask("No se pudo obtener la ubicación (revisá el permiso del navegador). ¿Registrar el check-in sin ubicación?", {yes:"Registrar"}).then(ok => { if (ok) save(null); }); }, {enableHighAccuracy:true, timeout:12000, maximumAge:0});
+  navigator.geolocation.getCurrentPosition(save, () => { confirmar("No se pudo obtener la ubicación (revisá el permiso del navegador). ¿Registrar el check-in sin ubicación?", {yes:"Registrar"}).then(ok => { if (ok) save(null); }); }, {enableHighAccuracy:true, timeout:12000, maximumAge:0});
 }
 function surveyMsg(v, p){
   return `Hola ${v.nombre}, gracias por visitar ${p ? p.code + " (" + p.titulo + ")" : "la propiedad"}. ¿Nos ayudás con 2 preguntas rápidas?\n1) Del 1 al 5, ¿qué te pareció la propiedad?\n2) ¿Te interesa avanzar o preferís ver otras opciones?\nPodés responder con un mensaje. ¡Gracias!`;
@@ -1737,7 +1742,7 @@ function shareReport(viaWhatsApp){
   const msg = ownerSummary(p), contacto = (p.propietario && p.propietario.contacto) || "", digits = contacto.replace(/\D/g, "");
   if (viaWhatsApp && digits.length >= 8 && !/@/.test(contacto)){ window.open("https://wa.me/" + digits.replace(/^0?/, "549") + "?text=" + encodeURIComponent(msg), "_blank", "noopener"); return; }
   if (viaWhatsApp) toast("Esta propiedad no tiene un teléfono del propietario: copio el resumen para que lo envíes vos.");
-  const mostrar = () => ask(msg, {title:"Resumen para el propietario", soloCerrar:true});
+  const mostrar = () => confirmar(msg, {title:"Resumen para el propietario", soloCerrar:true});
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(msg).then(() => { if (!viaWhatsApp) toast("Resumen copiado"); }, mostrar);
   else mostrar();
 }
@@ -1943,12 +1948,12 @@ async function importSheet(file){
     if (esNueva){ nuevas.push(p); add++; } else upd++;
   });
   if (!upd && !add){ toast("No encontré propiedades para importar."); return; }
-  if (!await ask(`Se van a actualizar ${upd} propiedad${upd === 1 ? "" : "es"} y agregar ${add}. Las fotos ya cargadas no se tocan. ¿Continuar?`, {yes:"Importar"})) { renderAll(); return; }
+  if (!await confirmar(`Se van a actualizar ${upd} propiedad${upd === 1 ? "" : "es"} y agregar ${add}. Las fotos ya cargadas no se tocan. ¿Continuar?`, {yes:"Importar"})) { renderAll(); return; }
   props.push(...nuevas);
   await saveProps(); renderAll(); toast(`Importación lista: ${upd} actualizadas, ${add} nuevas`);
 }
 let askResolve = null;
-function ask(text, {yes = "Confirmar", no = "Cancelar", title = "Confirmar", soloCerrar = false} = {}){
+function confirmar(text, {yes = "Confirmar", no = "Cancelar", title = "Confirmar", soloCerrar = false} = {}){
   $("#askTitle").textContent = title; $("#askText").textContent = text;
   $("#askYes").textContent = yes; $("#askYes").hidden = soloCerrar;
   $("#askNo").textContent = soloCerrar ? "Cerrar" : no;
